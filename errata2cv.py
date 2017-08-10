@@ -13,8 +13,8 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 #TODO: create command line arguments to set this values
 URL = "https://satellite.default/"
 USERNAME = "admin"
-PASSWORD = "unix1234"
-ORG_NAME = "Karmalabs"
+PASSWORD = "password"
+ORG_NAME = "Default Organization"
 
 # Logging level
 #TODO: create a command line argument to set this value
