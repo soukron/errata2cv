@@ -1,0 +1,44 @@
+<%#
+name: Content Management - Add Erratas to CVs
+job_category: Miscellaneous
+description_format: Add Erratas to CVs
+snippet: false
+template_inputs:
+- name: cv
+  required: true
+  input_type: user
+  description: Comma-separated list of Content View names to update.
+  advanced: false
+- name: type
+  required: true
+  input_type: user
+  description: "Comma-separated list of errata types to include (bugfix, enhancement or security)."
+  advanced: false
+- name: severity
+  required: true
+  input_type: user
+  description: "Comma-separated list of errata severity level to include (critical, important, moderate or low)."
+  advanced: false
+- name: propagate
+  required: true
+  input_type: user
+  description: Propagate incremental version to Composite Content Views.
+  options: "Yes\r\nNo"
+  advanced: false
+- name: update-hosts
+  required: false
+  input_type: user
+  description: Comma-separated list of lifecycle environments to update hosts with the included erratas.
+  advanced: false
+- name: dry-run
+  required: true
+  input_type: user
+  description: Check for erratas but don't update Content Views nor update hosts.
+  options: "Yes\r\nNo"
+  advanced: false
+provider_type: SSH
+kind: job_template
+%>
+
+/usr/local/bin/publish_cvs.py --cv <%= input("cv") %> --type <%= input("type") %> --severity <%= input("severity") %> <% if input("propagate") == "Yes" -%>--propagate<% end -%> <% if input("update-hosts") != "" -%>--update-hosts <%= input("update-hosts") %><% end -%> <% if input("dry-run") == "Yes" -%>--dry-run<% end -%>
+
