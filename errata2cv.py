@@ -9,6 +9,9 @@ import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+# Version
+VERSION = "1.1.0"
+
 # Satellite information
 #TODO: create command line arguments to set this values
 URL = "https://satellite.default/"
@@ -48,7 +51,7 @@ def post_json(location, json_data):
 
 def main():
     # Read arguments from command line
-    parser = argparse.ArgumentParser(description = "Satellite 6 - Content View Errata Updater")
+    parser = argparse.ArgumentParser(description = "Satellite 6 - Content View Errata Updater v%s" % VERSION)
     parser.add_argument("--cv", help = "Comma-separated list of Content View names to update.", required = True)
     parser.add_argument("--type", type = str.lower, help = "Comma-separated list of errata types to include (bugfix, enhancement or security). Default: Security.", default = "security")
     parser.add_argument("--severity", type = str.lower, help = "Comma-separated list of errata severity level to include (critical, important, moderate or low). Default: Critical.", default = "critical")
@@ -58,7 +61,7 @@ def main():
     parser.add_argument("--update-hosts", help = "Comma-separated list of lifecycle environments to update hosts with the included erratas.", default = "")
     parser.add_argument("--dry-run", action = "store_true", help = "Check for erratas but don't update Content Views nor update hosts.", default = False)
     parser.add_argument("-d", "--debug", action = "store_true", help = "Show debug information (including GET/POST requests)", default = False)
-    parser.add_argument("-V", "--version", action = "version", version = "%(prog)s 1.0.0")
+    parser.add_argument("-V", "--version", action = "version", version = "%(prog)s " + VERSION)
     args = vars(parser.parse_args())
 
     # Calculate logging level for main program

@@ -6,6 +6,8 @@ applicable.
 If you want a more complex handling of your Content Views there are other options to consider like
 [cvmanager](https://github.com/RedHatSatellite/katello-cvmanager) and/or [katello-publish-cv](https://github.com/RedHatSatellite/katello-publish-cvs) but that tools publish new Content View versions everytime, which may be overkill in some situations.
 
+Note: It only updates Content Views in _Library_ lifecycle environment. See **Examples** below for an example Content View organization.
+
 ## Features
 * Update Content Views using incremental versions.
 * Add erratas by filtering their type, severity and date.
@@ -13,9 +15,9 @@ If you want a more complex handling of your Content Views there are other option
 * Apply erratas to hosts if applicable using Remote Execution job (this allows to re-run the job in hosts where it failed for any reason).
 * Import as a Job Template to schedule it easily.
 
-## Requisites
-* Tested and works on:Satellite 6.2. 
-* It only updates Content Views in _Library_ lifecycle environment. See **Examples** below.
+## Compatibility
+Tested and works on: 
+* Satellite 6.2.10 in RHEL 7.3 (python 2.7.5) 
 
 ## Instructions
 Use command help to understand the arguments:
@@ -25,7 +27,7 @@ usage: errata2cv.py [-h] --cv CV [--type TYPE] [--severity SEVERITY]
                     [--from-date FROM_DATE] [--to-date TO_DATE] [--propagate]
                     [--update-hosts UPDATE_HOSTS] [--dry-run] [-v]
 
-Satellite 6 - Content View Errata Updater
+Satellite 6 - Content View Errata Updater v1.1.0
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -47,7 +49,8 @@ optional arguments:
                         update hosts with the included erratas.
   --dry-run             Check for erratas but don't update Content Views nor
                         update hosts.
-  -v, --version         show program's version number and exit
+  -d, --debug           Show debug information (including GET/POST requests)
+  -V, --version         show program's version number and exit
 ~~~
 
 ## Examples
