@@ -16,10 +16,6 @@ USERNAME = "admin"
 PASSWORD = "password"
 ORG_NAME = "Default Organization"
 
-# Logging level
-#TODO: create a command line argument to set this value
-LOGGING_LEVEL = logging.INFO
-
 # API information
 SATELLITE_API = URL + "api/v2/"
 KATELLO_API = URL + "katello/api/v2/"
@@ -31,23 +27,23 @@ SSL_VERIFY = False
 #TODO: use some library to improve error handling/logging
 def get_json(location, json_data = ""):
     logging.debug("Request: GET %s" % location)
-    if json_data: logging.debug("Request data: " + json.dumps(json_data, indent = 1))
+    if json_data: logging.debug("Request data: " + json.dumps(json_data))
     result = requests.get(location,
                             data = json_data,
                             auth = (USERNAME, PASSWORD),
                             verify = SSL_VERIFY)
-    logging.debug("Request result: " + json.dumps(result.json(), indent = 1))
+    logging.debug("Request result: " + json.dumps(result.json()))
     return result.json()
 
 def post_json(location, json_data):
     logging.debug("Request: POST %s" % location)
-    if json_data: logging.debug("Request data: " + json.dumps(json_data, indent = 1))
+    if json_data: logging.debug("Request data: " + json.dumps(json_data))
     result = requests.post(location,
                             data = json_data,
                             auth = (USERNAME, PASSWORD),
                             verify = SSL_VERIFY,
                             headers = POST_HEADERS)
-    logging.debug("Request result: " + json.dumps(result.json(), indent = 1))
+    logging.debug("Request result: " + json.dumps(result.json()))
     return result.json()
 
 def main():
@@ -61,8 +57,16 @@ def main():
     parser.add_argument("--propagate", action = "store_true", help = "Propagate incremental version to Composite Content Views. Default: False.", default = False)
     parser.add_argument("--update-hosts", help = "Comma-separated list of lifecycle environments to update hosts with the included erratas.", default = "")
     parser.add_argument("--dry-run", action = "store_true", help = "Check for erratas but don't update Content Views nor update hosts.", default = False)
-    parser.add_argument("-v", "--version", action = "version", version = "%(prog)s 1.0.0")
+    parser.add_argument("-d", "--debug", action = "store_true", help = "Show debug information (including GET/POST requests)", default = False)
+    parser.add_argument("-V", "--version", action = "version", version = "%(prog)s 1.0.0")
     args = vars(parser.parse_args())
+
+    # Calculate logging level for main program
+    logging.getLogger("requests").setLevel(logging.WARNING)
+    if args["debug"] is True:
+        LOGGING_LEVEL = logging.DEBUG
+    else:
+        LOGGING_LEVEL = logging.INFO
 
     # Setup logging
     log = logging.getLogger(__name__)
@@ -70,7 +74,6 @@ def main():
                     stream = sys.stdout,
                     format = "%(asctime)s %(levelname)s: %(message)s",
                     handlers = [logging.StreamHandler()])
-    logging.getLogger("requests").setLevel(logging.WARNING)
 
     # Get organization
     logging.debug("Looking for organization information.")
