@@ -40,5 +40,5 @@ provider_type: SSH
 kind: job_template
 %>
 
-/usr/local/bin/publish_cvs.py --cv <%= input("cv") %> --type <%= input("type") %> --severity <%= input("severity") %> <% if input("propagate") == "Yes" -%>--propagate<% end -%> <% if input("update-hosts") != "" -%>--update-hosts <%= input("update-hosts") %><% end -%> <% if input("dry-run") == "Yes" -%>--dry-run<% end -%>
+/usr/local/bin/errata2cv.py --cv <%= input("cv") %> --type <%= input("type") %> --severity <%= input("severity") %> <% if input("propagate") == "Yes" -%>--propagate<% end -%> <% if input("update-hosts") != "" -%>--update-hosts <%= input("update-hosts") %><% end -%> <% if input("dry-run") == "Yes" -%>--dry-run<% end -%>
 
