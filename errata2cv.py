@@ -10,7 +10,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 # Version
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 
 # Satellite information
 #TODO: create command line arguments to set this values
@@ -150,7 +150,6 @@ def main():
 
             # Compose POST parameters to publish incremental version
             post_params = {
-                "propagate_all_composites": 1 if args["propagate"] else 0,
                 "resolve_dependencies": 1,
                 "add_content": { "errata_ids": errata_ids },
                 "content_view_version_environments": [ {
@@ -158,6 +157,8 @@ def main():
                     "environment_ids": [ 1 ]
                 } ]
             }
+            if args["propagate"] == True:
+                post_params["propagate_all_composites"] = 1 
 
             # If no dry-run execution publish an incremental version and propagate it to all composite content views
             if args["dry_run"] == False:
