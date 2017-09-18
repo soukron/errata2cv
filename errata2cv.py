@@ -13,35 +13,38 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class PasswordPrompt(argparse.Action):
     def __call__(self, parser, args, values, option_string):
-        password = getpass.getpass()
-        setattr(args, self.dest, password)
+        if values is None:
+            values = getpass.getpass()
+        setattr(args, self.dest, values)
         
 
 # Version
 VERSION = "1.1.1"
 
-# API Settings
+# API Information
+USERNAME = None 
+PASSWORD = None
 POST_HEADERS = {'content-type': 'application/json'}
 SSL_VERIFY = False
 
 # Helper functions for GET/POST API methods
 #TODO: use some library to improve error handling/logging
-def get_json(location, username, password, json_data = ""):
+def get_json(location, json_data = ""):
     logging.debug("Request: GET %s" % location)
     if json_data: logging.debug("Request data: " + json.dumps(json_data))
     result = requests.get(location,
                             data = json_data,
-                            auth = (username, password),
+                            auth = (USERNAME, PASSWORD),
                             verify = SSL_VERIFY)
     logging.debug("Request result: " + json.dumps(result.json()))
     return result.json()
 
-def post_json(location, json_data, username, password):
+def post_json(location, json_data):
     logging.debug("Request: POST %s" % location)
     if json_data: logging.debug("Request data: " + json.dumps(json_data))
     result = requests.post(location,
                             data = json_data,
-                            auth = (username, password),
+                            auth = (USERNAME, PASSWORD),
                             verify = SSL_VERIFY,
                             headers = POST_HEADERS)
     logging.debug("Request result: " + json.dumps(result.json()))
@@ -60,8 +63,8 @@ def main():
     parser.add_argument("--dry-run", action = "store_true", help = "Check for erratas but don't update Content Views nor update hosts.", default = False)
     parser.add_argument("-o", "--organization", help = "Satellite Organization to work with", default = "Default Organization")
     parser.add_argument("-u", "--username", help = "Username to authenticate with", required = True)
-    parser.add_argument('-p', "--password", action = PasswordPrompt, nargs=0, help = "Prompt password to be used alongside with username", required=True)
-    parser.add_argument('-e', "--endpoint", help = "Satellite base URL. Eg: https://satellite.default/", required = True)
+    parser.add_argument('-p', "--password", action = PasswordPrompt, nargs='?', help = "Prompt password to be used alongside with username", dest="password", required=True)
+    parser.add_argument('-s', "--server-url", help = "Satellite base URL. Eg: https://satellite.default/", required = True)
     parser.add_argument("-d", "--debug", action = "store_true", help = "Show debug information (including GET/POST requests)", default = False)
     parser.add_argument("-V", "--version", action = "version", version = "%(prog)s " + VERSION)
     args = vars(parser.parse_args())
@@ -72,7 +75,7 @@ def main():
         LOGGING_LEVEL = logging.DEBUG
     else:
         LOGGING_LEVEL = logging.INFO
-
+     
     # Setup logging
     log = logging.getLogger(__name__)
     logging.basicConfig(level = LOGGING_LEVEL,
@@ -80,19 +83,22 @@ def main():
                     format = "%(asctime)s %(levelname)s: %(message)s",
                     handlers = [logging.StreamHandler()])
 
-    # API information
-    endpoint = args["endpoint"]
-    username = args["username"]
-    password = args["password"]
-    organization = args["organization"]
-    satellite_api = endpoint + "api/v2/"
-    katello_api = endpoint + "katello/api/v2/"
-    tasks_api = endpoint + "foreman_tasks/api/"
+    # Update global vars API auth information
+    global USERNAME
+    USERNAME = args["username"]
+    global PASSWORD
+    PASSWORD = args["password"]
 
+    # API information
+    server_url = args["server_url"]
+    organization = args["organization"]
+    satellite_api = server_url + "api/v2/"
+    katello_api = server_url + "katello/api/v2/"
+    tasks_api = server_url + "foreman_tasks/api/"
 
     # Get organization
     logging.debug("Looking for organization information.")
-    org = get_json(katello_api + "organizations/" + organization, username, password)
+    org = get_json(katello_api + "organizations/" + organization)
 
     # Compose search strings using input arguments
     severity_search = "(severity = " + ' or severity = '.join([x.capitalize() for x in args["severity"].split(',')]) + ")"
@@ -109,7 +115,7 @@ def main():
                 "nondefault": 1,
                 "search": "name=%s" % cv_name
             }
-            cv = get_json(katello_api + "organizations/%s/content_views" % org["id"], username, password, get_params)["results"][0]
+            cv = get_json(katello_api + "organizations/%s/content_views" % org["id"], get_params)["results"][0]
         except:
             logging.warning("Skipping non existing content-view %s." % cv_name)
             continue
@@ -143,7 +149,7 @@ def main():
         for repo in cv["repositories"]:
             logging.info("Searching for erratas in repository %s" % repo["name"])
             get_params["repository_id"] = repo["id"]
-            errata_in_repo = get_json(katello_api + "errata", username, password, get_params)
+            errata_in_repo = get_json(katello_api + "errata", get_params)
 
             # Save errata id in an array and warn if any suggests a reboot
             for errata in errata_in_repo["results"]:
@@ -175,13 +181,13 @@ def main():
             # If no dry-run execution publish an incremental version and propagate it to all composite content views
             if args["dry_run"] == False:
                 logging.info("Publishing incremental content-view version.")
-                incremental_update = post_json(katello_api + "content_view_versions/incremental_update", json.dumps(post_params), username, password)
+                incremental_update = post_json(katello_api + "content_view_versions/incremental_update", json.dumps(post_params))
 
                 # Loop until task is finished
                 while(incremental_update["pending"] != False):
                     logging.info("Waitting for publishing task to complete.")
                     time.sleep(60)
-                    incremental_update = get_json(tasks_api + "tasks/" + incremental_update["id"], username, password)
+                    incremental_update = get_json(tasks_api + "tasks/" + incremental_update["id"])
 
                 if incremental_update["result"] != "success":
                     logging.error("Error publishing incremental content-view version. Skipping installation in hosts.")
@@ -197,7 +203,7 @@ def main():
                     search_query = environments_search + " and " + applicable_search
 
                     # Get template id
-                    template_json = get_json(satellite_api + 'job_templates', username, password, {"search": 'name = "Install Errata - Katello SSH Default"'})
+                    template_json = get_json(satellite_api + 'job_templates', {"search": 'name = "Install Errata - Katello SSH Default"'})
                     if len(template_json["results"]) > 0:
                         template_id = template_json["results"][0]["id"]
 
@@ -214,7 +220,7 @@ def main():
                         }
 
                         # Invoke job execution and continue with another CV in the list (if any)
-                        job_execution = post_json(satellite_api + 'job_invocations', json.dumps(post_params), username, password)
+                        job_execution = post_json(satellite_api + 'job_invocations', json.dumps(post_params))
                     else:
                         logging.info("Remote execution job \"Install Errata - Katello SSH Default\" not found. Skipping errata installation.")
                 else:
