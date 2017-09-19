@@ -62,7 +62,7 @@ def post_json(location, json_data):
 def main():
     # Read arguments from command line
     parser = argparse.ArgumentParser(description = "Satellite 6 - Content View Errata Updater v%s" % VERSION)
-    parser.add_argument("--cv", help = "Comma-separated list of Content View names to update.", required = True)
+    parser.add_argument("--cv", help = "Comma-separated list of Content View names to update. If keyword all is specified, all existing content views in the organization will be updated", required = True)
     parser.add_argument("--type", type = str.lower, help = "Comma-separated list of errata types to include (bugfix, enhancement or security). Default: Security.", default = "security")
     parser.add_argument("--severity", type = str.lower, help = "Comma-separated list of errata severity level to include (critical, important, moderate or low). Default: Critical.", default = "critical")
     parser.add_argument("--from-date", help = "Date to use as a referente instead of Content View publishing date (YYYY/MM/DD).", default = "")
@@ -116,8 +116,20 @@ def main():
     severity_search = "(severity = " + ' or severity = '.join([x.capitalize() for x in args["severity"].split(',')]) + ")"
     type_search = "(type = " + ' or type = '.join(args["type"].split(',')) + ")"
 
+    # If cv param is set to all, get all existing contentviews
+    if args["cv"].lower() == "all":
+        logging.info("Getting list of all existing content views in organization %s.", ORG_NAME)
+        get_params = {
+                "noncomposite": 1,
+                "nondefault": 1
+        }
+        all_cvs = get_json(KATELLO_API + "organizations/%s/content_views" % org["id"], get_params)["results"]
+        cv_list = ",".join(i["name"] for i in all_cvs)
+    else:
+        cv_list = args["cv"]
+
     # Loop over content-views to find any new errata in their repositories
-    for cv_name in args["cv"].split(","):
+    for cv_name in cv_list.split(","):
         logging.info("Processing content-view %s." % cv_name)
         errata_ids = []
         try:
