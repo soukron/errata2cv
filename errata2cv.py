@@ -28,7 +28,7 @@ PASSWORD = None
 ORG_NAME = "Default Organization"
 
 # API Information
-SATELLITE_API = URL + "api/v2/" 
+SATELLITE_API = URL + "api/v2/"
 KATELLO_API = URL + "katello/api/v2/"
 TASKS_API = URL + "foreman_tasks/api/"
 
@@ -70,7 +70,7 @@ def main():
     parser.add_argument("--propagate", action = "store_true", help = "Propagate incremental version to Composite Content Views. Default: False.", default = False)
     parser.add_argument("--update-hosts", help = "Comma-separated list of lifecycle environments to update hosts with the included erratas.", default = "")
     parser.add_argument("--dry-run", action = "store_true", help = "Check for erratas but don't update Content Views nor update hosts.", default = False)
-    parser.add_argument("-o", "--organization", help = "Satellite Organization to work with")
+    parser.add_argument("-o", "--organization", help = "Satellite Organization to work with", required = True)
     parser.add_argument("-u", "--username", help = "Username to authenticate with", required = True)
     parser.add_argument('-p', "--password", action = PasswordPrompt, nargs='?', help = "Prompt password to be used alongside with username", dest="password", required=True)
     parser.add_argument('-s', "--server-url", help = "Satellite base URL. Eg: https://satellite.default/", required = True)
@@ -84,7 +84,7 @@ def main():
         LOGGING_LEVEL = logging.DEBUG
     else:
         LOGGING_LEVEL = logging.INFO
-     
+ 
     # Setup logging
     log = logging.getLogger(__name__)
     logging.basicConfig(level = LOGGING_LEVEL,
