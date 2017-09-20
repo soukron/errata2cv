@@ -121,7 +121,8 @@ def main():
         logging.info("Getting list of all existing content views in organization %s.", ORG_NAME)
         get_params = {
                 "noncomposite": 1,
-                "nondefault": 1
+                "nondefault": 1,
+                "per_page": 9999
         }
         all_cvs = get_json(KATELLO_API + "organizations/%s/content_views" % org["id"], get_params)["results"]
         cv_list = ",".join(i["name"] for i in all_cvs)
