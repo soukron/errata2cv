@@ -209,10 +209,13 @@ def main():
                 incremental_update = post_json(KATELLO_API + "content_view_versions/incremental_update", json.dumps(post_params))
 
                 # Loop until task is finished
+                progress = 0
                 while(incremental_update["pending"] != False):
-                    logging.info("Waitting for publishing task to complete.")
+                    logging.info("Waitting for publishing task to complete: %i%%." % progress)
                     time.sleep(60)
                     incremental_update = get_json(TASKS_API + "tasks/" + incremental_update["id"])
+                    # Progress is returned like 0.05 = 5%
+                    progress = float(incremental_update=["progress"]) * 100 
 
                 if incremental_update["result"] != "success":
                     logging.error("Error publishing incremental content-view version. Skipping installation in hosts.")
