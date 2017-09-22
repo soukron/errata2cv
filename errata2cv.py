@@ -215,7 +215,7 @@ def main():
                     time.sleep(60)
                     incremental_update = get_json(TASKS_API + "tasks/" + incremental_update["id"])
                     # Progress is returned like 0.05 = 5%
-                    progress = float(incremental_update=["progress"]) * 100 
+                    progress = float(incremental_update["progress"]) * 100 
 
                 if incremental_update["result"] != "success":
                     logging.error("Error publishing incremental content-view version. Skipping installation in hosts.")
