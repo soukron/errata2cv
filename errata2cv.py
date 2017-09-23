@@ -19,12 +19,12 @@ class PasswordPrompt(argparse.Action):
         
 
 # Version
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 
-# Satellite Information
+# Default Satellite Information
 URL = "https://satellite.default/" 
-USERNAME = None
-PASSWORD = None
+USERNAME = "admin"
+PASSWORD = "password"
 ORG_NAME = "Default Organization"
 
 # API Information
@@ -60,6 +60,8 @@ def post_json(location, json_data):
     return result.json()
 
 def main():
+    global URL, USERNAME, PASSWORD, ORG_NAME, SATELLITE_API, KATELLO_API, TASKS_API
+
     # Read arguments from command line
     parser = argparse.ArgumentParser(description = "Satellite 6 - Content View Errata Updater v%s" % VERSION)
     parser.add_argument("--cv", help = "Comma-separated list of Content View names to update. If keyword all is specified, all existing content views in the organization will be updated", required = True)
@@ -70,10 +72,10 @@ def main():
     parser.add_argument("--propagate", action = "store_true", help = "Propagate incremental version to Composite Content Views. Default: False.", default = False)
     parser.add_argument("--update-hosts", help = "Comma-separated list of lifecycle environments to update hosts with the included erratas.", default = "")
     parser.add_argument("--dry-run", action = "store_true", help = "Check for erratas but don't update Content Views nor update hosts.", default = False)
-    parser.add_argument("-o", "--organization", help = "Satellite Organization to work with", required = True)
-    parser.add_argument("-u", "--username", help = "Username to authenticate with", required = True)
-    parser.add_argument('-p', "--password", action = PasswordPrompt, nargs='?', help = "Prompt password to be used alongside with username", dest="password", required=True)
-    parser.add_argument('-s', "--server-url", help = "Satellite base URL. Eg: https://satellite.default/", required = True)
+    parser.add_argument('-s', "--server-url", help = "Satellite base URL with trailing slash. Default: %s" % URL)
+    parser.add_argument("-o", "--organization", help = "Satellite Organization to work with. Default: %s " % ORG_NAME)
+    parser.add_argument("-u", "--username", help = "Username to authenticate with. Default: %s" % USERNAME)
+    parser.add_argument('-p', "--password", action = PasswordPrompt, nargs='?', help = "Password to be used. Prompt if no password is provided", dest="password")
     parser.add_argument("-d", "--debug", action = "store_true", help = "Show debug information (including GET/POST requests)", default = False)
     parser.add_argument("-V", "--version", action = "version", version = "%(prog)s " + VERSION)
     args = vars(parser.parse_args())
@@ -93,20 +95,17 @@ def main():
                     handlers = [logging.StreamHandler()])
 
     # Update global vars with args values
-    global USERNAME
-    USERNAME = args["username"]
-    global PASSWORD
-    PASSWORD = args["password"]
-    global URL 
-    URL = args["server_url"]
-    global ORG_NAME
-    ORG_NAME = args["organization"]
-    global SATELLITE_API
-    SATELLITE_API = URL + "api/v2/" 
-    global KATELLO_API
-    KATELLO_API = URL + "katello/api/v2/"
-    global TASKS_API
-    TASKS_API = URL + "foreman_tasks/api/"
+    if args["username"]:
+        USERNAME = args["username"]
+    if args["password"]:
+        PASSWORD = args["password"]
+    if args["server_url"]:
+        URL = args["server_url"]
+        SATELLITE_API = URL + "api/v2/" 
+        KATELLO_API = URL + "katello/api/v2/"
+        TASKS_API = URL + "foreman_tasks/api/"
+    if args["organization"]:
+        ORG_NAME = args["organization"]
 
     # Get organization
     logging.debug("Looking for organization information.")
