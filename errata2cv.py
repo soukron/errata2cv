@@ -5,24 +5,34 @@ import time
 from datetime import datetime
 import logging
 import argparse
+import getpass
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+
+class PasswordPrompt(argparse.Action):
+    def __call__(self, parser, args, values, option_string):
+        if values is None:
+            values = getpass.getpass()
+        setattr(args, self.dest, values)
+        
+
 # Version
 VERSION = "1.1.1"
 
-# Satellite information
-#TODO: create command line arguments to set this values
-URL = "https://satellite.default/"
-USERNAME = "admin"
-PASSWORD = "password"
+# Satellite Information
+URL = "https://satellite.default/" 
+USERNAME = None
+PASSWORD = None
 ORG_NAME = "Default Organization"
 
-# API information
+# API Information
 SATELLITE_API = URL + "api/v2/"
 KATELLO_API = URL + "katello/api/v2/"
 TASKS_API = URL + "foreman_tasks/api/"
+
+# API Settings
 POST_HEADERS = {'content-type': 'application/json'}
 SSL_VERIFY = False
 
@@ -52,7 +62,7 @@ def post_json(location, json_data):
 def main():
     # Read arguments from command line
     parser = argparse.ArgumentParser(description = "Satellite 6 - Content View Errata Updater v%s" % VERSION)
-    parser.add_argument("--cv", help = "Comma-separated list of Content View names to update.", required = True)
+    parser.add_argument("--cv", help = "Comma-separated list of Content View names to update. If keyword all is specified, all existing content views in the organization will be updated", required = True)
     parser.add_argument("--type", type = str.lower, help = "Comma-separated list of errata types to include (bugfix, enhancement or security). Default: Security.", default = "security")
     parser.add_argument("--severity", type = str.lower, help = "Comma-separated list of errata severity level to include (critical, important, moderate or low). Default: Critical.", default = "critical")
     parser.add_argument("--from-date", help = "Date to use as a referente instead of Content View publishing date (YYYY/MM/DD).", default = "")
@@ -60,6 +70,10 @@ def main():
     parser.add_argument("--propagate", action = "store_true", help = "Propagate incremental version to Composite Content Views. Default: False.", default = False)
     parser.add_argument("--update-hosts", help = "Comma-separated list of lifecycle environments to update hosts with the included erratas.", default = "")
     parser.add_argument("--dry-run", action = "store_true", help = "Check for erratas but don't update Content Views nor update hosts.", default = False)
+    parser.add_argument("-o", "--organization", help = "Satellite Organization to work with", required = True)
+    parser.add_argument("-u", "--username", help = "Username to authenticate with", required = True)
+    parser.add_argument('-p', "--password", action = PasswordPrompt, nargs='?', help = "Prompt password to be used alongside with username", dest="password", required=True)
+    parser.add_argument('-s', "--server-url", help = "Satellite base URL. Eg: https://satellite.default/", required = True)
     parser.add_argument("-d", "--debug", action = "store_true", help = "Show debug information (including GET/POST requests)", default = False)
     parser.add_argument("-V", "--version", action = "version", version = "%(prog)s " + VERSION)
     args = vars(parser.parse_args())
@@ -70,13 +84,29 @@ def main():
         LOGGING_LEVEL = logging.DEBUG
     else:
         LOGGING_LEVEL = logging.INFO
-
+ 
     # Setup logging
     log = logging.getLogger(__name__)
     logging.basicConfig(level = LOGGING_LEVEL,
                     stream = sys.stdout,
                     format = "%(asctime)s %(levelname)s: %(message)s",
                     handlers = [logging.StreamHandler()])
+
+    # Update global vars with args values
+    global USERNAME
+    USERNAME = args["username"]
+    global PASSWORD
+    PASSWORD = args["password"]
+    global URL 
+    URL = args["server_url"]
+    global ORG_NAME
+    ORG_NAME = args["organization"]
+    global SATELLITE_API
+    SATELLITE_API = URL + "api/v2/" 
+    global KATELLO_API
+    KATELLO_API = URL + "katello/api/v2/"
+    global TASKS_API
+    TASKS_API = URL + "foreman_tasks/api/"
 
     # Get organization
     logging.debug("Looking for organization information.")
@@ -86,8 +116,21 @@ def main():
     severity_search = "(severity = " + ' or severity = '.join([x.capitalize() for x in args["severity"].split(',')]) + ")"
     type_search = "(type = " + ' or type = '.join(args["type"].split(',')) + ")"
 
+    # If cv param is set to all, get all existing contentviews
+    if args["cv"].lower() == "all":
+        logging.info("Getting list of all existing content views in organization %s.", ORG_NAME)
+        get_params = {
+                "noncomposite": 1,
+                "nondefault": 1,
+                "per_page": 9999
+        }
+        all_cvs = get_json(KATELLO_API + "organizations/%s/content_views" % org["id"], get_params)["results"]
+        cv_list = ",".join(i["name"] for i in all_cvs)
+    else:
+        cv_list = args["cv"]
+
     # Loop over content-views to find any new errata in their repositories
-    for cv_name in args["cv"].split(","):
+    for cv_name in cv_list.split(","):
         logging.info("Processing content-view %s." % cv_name)
         errata_ids = []
         try:
@@ -166,10 +209,13 @@ def main():
                 incremental_update = post_json(KATELLO_API + "content_view_versions/incremental_update", json.dumps(post_params))
 
                 # Loop until task is finished
+                progress = 0
                 while(incremental_update["pending"] != False):
-                    logging.info("Waitting for publishing task to complete.")
+                    logging.info("Waitting for publishing task to complete: %i%%." % progress)
                     time.sleep(60)
                     incremental_update = get_json(TASKS_API + "tasks/" + incremental_update["id"])
+                    # Progress is returned like 0.05 = 5%
+                    progress = float(incremental_update["progress"]) * 100 
 
                 if incremental_update["result"] != "success":
                     logging.error("Error publishing incremental content-view version. Skipping installation in hosts.")
