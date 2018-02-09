@@ -1,15 +1,17 @@
 #!/usr/bin/python
+import argparse
+import ConfigParser
+import getpass
 import json
+import logging
+import os
+import requests
 import sys
 import time
+
 from datetime import datetime
-import logging
-import argparse
-import getpass
-import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
 
 class PasswordPrompt(argparse.Action):
     def __call__(self, parser, args, values, option_string):
@@ -17,15 +19,17 @@ class PasswordPrompt(argparse.Action):
             values = getpass.getpass()
         setattr(args, self.dest, values)
         
-
 # Version
-VERSION = "1.1.2"
+VERSION = "1.2.0"
 
-# Default Satellite Information
+# Default configuration (overwritten by errata2cv.ini if exist values and command line arguments)
 URL = "https://satellite.default/" 
 USERNAME = "admin"
 PASSWORD = "password"
 ORG_NAME = "Default Organization"
+
+# Logging default level
+LOGGING_LEVEL = logging.INFO
 
 # API Information
 SATELLITE_API = URL + "api/v2/"
@@ -60,9 +64,9 @@ def post_json(location, json_data):
     return result.json()
 
 def main():
-    global URL, USERNAME, PASSWORD, ORG_NAME, SATELLITE_API, KATELLO_API, TASKS_API
+    global URL, USERNAME, PASSWORD, ORG_NAME, SATELLITE_API, KATELLO_API, TASKS_API, LOGGING_LEVEL
 
-    # Read arguments from command line
+    # Setup arguments from command line
     parser = argparse.ArgumentParser(description = "Satellite 6 - Content View Errata Updater v%s" % VERSION)
     parser.add_argument("--cv", help = "Comma-separated list of Content View names to update. If keyword all is specified, all existing content views in the organization will be updated", required = True)
     parser.add_argument("--type", type = str.lower, help = "Comma-separated list of errata types to include (bugfix, enhancement or security). Default: Security.", default = "security")
@@ -72,40 +76,52 @@ def main():
     parser.add_argument("--propagate", action = "store_true", help = "Propagate incremental version to Composite Content Views. Default: False.", default = False)
     parser.add_argument("--update-hosts", help = "Comma-separated list of lifecycle environments to update hosts with the included erratas.", default = "")
     parser.add_argument("--dry-run", action = "store_true", help = "Check for erratas but don't update Content Views nor update hosts.", default = False)
-    parser.add_argument('-s', "--server-url", help = "Satellite base URL with trailing slash. Default: %s" % URL)
-    parser.add_argument("-o", "--organization", help = "Satellite Organization to work with. Default: %s " % ORG_NAME)
-    parser.add_argument("-u", "--username", help = "Username to authenticate with. Default: %s" % USERNAME)
-    parser.add_argument('-p', "--password", action = PasswordPrompt, nargs='?', help = "Password to be used. Prompt if no password is provided", dest="password")
-    parser.add_argument("-d", "--debug", action = "store_true", help = "Show debug information (including GET/POST requests)", default = False)
+    parser.add_argument("-s", "--server-url", "--url", help = "Satellite base URL with trailing slash. Default: %s," % URL)
+    parser.add_argument("-o", "--organization", "--org_name", help = "Satellite Organization to work with. Default: %s, " % ORG_NAME)
+    parser.add_argument("-u", "--username", help = "Username to authenticate with. Default: %s," % USERNAME)
+    parser.add_argument("-p", "--password", action = PasswordPrompt, nargs='?', help = "Password to be used. Prompt if no password is provided,", dest="password")
+    parser.add_argument("-d", "--debug", action = "store_true", help = "Show debug information (including GET/POST requests).", default = False)
     parser.add_argument("-V", "--version", action = "version", version = "%(prog)s " + VERSION)
     args = vars(parser.parse_args())
 
-    # Calculate logging level for main program
-    logging.getLogger("requests").setLevel(logging.WARNING)
+    # Override configuration with args values if present in command line or config file if available
+    # TODO: Do all this configuration stuff it better than global variables, someday.
+    config = ConfigParser.ConfigParser()
+    config.read('%s/errata2cv.ini' % os.path.abspath(os.path.dirname(sys.argv[0])))
+
+    if args["username"]:
+        USERNAME = args["username"]
+    elif config.has_option('config', 'username'):
+        USERNAME = config.get('config', 'username')
+
+    if args["password"]:
+        PASSWORD = args["password"]
+    elif config.has_option('config', 'password'):
+        PASSWORD = config.get('config', 'password')
+
+    if args["server_url"]:
+        URL = args["server_url"]
+    elif config.has_option('config', 'url'):
+        URL = config.get('config', 'url')
+    SATELLITE_API = URL + "api/v2/" 
+    KATELLO_API = URL + "katello/api/v2/"
+    TASKS_API = URL + "foreman_tasks/api/"
+
+    if args["organization"]:
+        ORG_NAME = args["organization"]
+    elif config.has_option('config', 'org_name'):
+        ORG_NAME = config.get('config', 'org_name')
+
     if args["debug"] is True:
         LOGGING_LEVEL = logging.DEBUG
-    else:
-        LOGGING_LEVEL = logging.INFO
  
     # Setup logging
+    logging.getLogger("requests").setLevel(logging.WARNING)
     log = logging.getLogger(__name__)
     logging.basicConfig(level = LOGGING_LEVEL,
                     stream = sys.stdout,
                     format = "%(asctime)s %(levelname)s: %(message)s",
                     handlers = [logging.StreamHandler()])
-
-    # Update global vars with args values
-    if args["username"]:
-        USERNAME = args["username"]
-    if args["password"]:
-        PASSWORD = args["password"]
-    if args["server_url"]:
-        URL = args["server_url"]
-        SATELLITE_API = URL + "api/v2/" 
-        KATELLO_API = URL + "katello/api/v2/"
-        TASKS_API = URL + "foreman_tasks/api/"
-    if args["organization"]:
-        ORG_NAME = args["organization"]
 
     # Get organization
     logging.debug("Looking for organization information.")

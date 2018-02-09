@@ -25,13 +25,16 @@ Use command help to understand the arguments:
 ~~~
 usage: errata2cv.py [-h] --cv CV [--type TYPE] [--severity SEVERITY]
                     [--from-date FROM_DATE] [--to-date TO_DATE] [--propagate]
-                    [--update-hosts UPDATE_HOSTS] [--dry-run] [-v]
+                    [--update-hosts UPDATE_HOSTS] [--dry-run] [-s SERVER_URL]
+                    [-o ORGANIZATION] [-u USERNAME] [-p [PASSWORD]] [-d] [-V]
 
-Satellite 6 - Content View Errata Updater v1.1.0
+Satellite 6 - Content View Errata Updater v1.2.0
 
 optional arguments:
   -h, --help            show this help message and exit
   --cv CV               Comma-separated list of Content View names to update.
+                        If keyword all is specified, all existing content
+                        views in the organization will be updated
   --type TYPE           Comma-separated list of errata types to include
                         (bugfix, enhancement or security). Default: Security.
   --severity SEVERITY   Comma-separated list of errata severity level to
@@ -49,7 +52,18 @@ optional arguments:
                         update hosts with the included erratas.
   --dry-run             Check for erratas but don't update Content Views nor
                         update hosts.
-  -d, --debug           Show debug information (including GET/POST requests)
+  -s SERVER_URL, --server-url SERVER_URL, --url SERVER_URL
+                        Satellite base URL with trailing slash. Default:
+                        https://satellite.default/,
+  -o ORGANIZATION, --organization ORGANIZATION, --org_name ORGANIZATION
+                        Satellite Organization to work with. Default: Default
+                        Organization,
+  -u USERNAME, --username USERNAME
+                        Username to authenticate with. Default: admin,
+  -p [PASSWORD], --password [PASSWORD]
+                        Password to be used. Prompt if no password is
+                        provided,
+  -d, --debug           Show debug information (including GET/POST requests).
   -V, --version         show program's version number and exit
 ~~~
 
@@ -98,4 +112,3 @@ These a different example situations you can resolve with `errata2cv`:
 
 ## Contact
 Reach me in [Twitter](http://twitter.com/soukron) or email in soukron at gmbros.net
-
