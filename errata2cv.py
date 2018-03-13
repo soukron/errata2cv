@@ -20,7 +20,7 @@ class PasswordPrompt(argparse.Action):
         setattr(args, self.dest, values)
         
 # Version
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 # Default configuration (overwritten by errata2cv.ini if exist values and command line arguments)
 URL = "https://satellite.default/" 
@@ -202,7 +202,7 @@ def main():
             # Get CV version in Library environment only
             for version in cv["versions"]:
                 if 1 in version["environment_ids"]:
-                    logging.info("Selected content-view %s (version %s) as baseline to include %s erratas." % (cv["name"], version["version"], len(errata_ids)))
+                    logging.info("Selected content-view %s (version %s) as baseline to include %s erratas. Skipping any other existing content-view version." % (cv["name"], version["version"], len(errata_ids)))
                     break
                 else:
                     logging.debug("Skipping content-view %s (version %s): Not in Library." % (cv["name"], version["version"]))

@@ -18,6 +18,9 @@ Note: It only updates Content Views in _Library_ lifecycle environment. See **Ex
 ## Compatibility
 Tested and works on: 
 * Satellite 6.2.10 in RHEL 7.3 (python 2.7.5) 
+* Satellite 6.2.14 in RHEL 7.3 (python 2.7.5)
+
+WARNING: Use HTTPS as protocol as POST methods doesn't work as expected if using HTTP.
 
 ## Instructions
 Use command help to understand the arguments:
@@ -28,7 +31,7 @@ usage: errata2cv.py [-h] --cv CV [--type TYPE] [--severity SEVERITY]
                     [--update-hosts UPDATE_HOSTS] [--dry-run] [-s SERVER_URL]
                     [-o ORGANIZATION] [-u USERNAME] [-p [PASSWORD]] [-d] [-V]
 
-Satellite 6 - Content View Errata Updater v1.2.0
+Satellite 6 - Content View Errata Updater v1.2.1
 
 optional arguments:
   -h, --help            show this help message and exit
