@@ -19,6 +19,8 @@ Note: It only updates Content Views in _Library_ lifecycle environment. See **Ex
 Tested and works on: 
 * Satellite 6.2.10 in RHEL 7.3 (python 2.7.5) 
 
+WARNING: there is a work in progress to make it work with any version highter than 6.2.10. Wait for it if your installation is higher.
+
 ## Instructions
 Use command help to understand the arguments:
 
