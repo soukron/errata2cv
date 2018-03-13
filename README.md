@@ -22,8 +22,6 @@ Tested and works on:
 
 WARNING: Use HTTPS as protocol as POST methods doesn't work as expected if using HTTP.
 
-WARNING: there is a work in progress to make it work with any version highter than 6.2.10. Wait for it if your installation is higher.
-
 ## Instructions
 Use command help to understand the arguments:
 
