@@ -20,7 +20,7 @@ class PasswordPrompt(argparse.Action):
         setattr(args, self.dest, values)
         
 # Version
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 # Default configuration (overwritten by errata2cv.ini if exist values and command line arguments)
 URL = "https://satellite.default/" 
@@ -32,12 +32,12 @@ ORG_NAME = "Default Organization"
 LOGGING_LEVEL = logging.INFO
 
 # API Information
-SATELLITE_API = URL + "api/v2/"
-KATELLO_API = URL + "katello/api/v2/"
+SATELLITE_API = URL + "api/"
+KATELLO_API = URL + "katello/api/"
 TASKS_API = URL + "foreman_tasks/api/"
 
 # API Settings
-POST_HEADERS = {'content-type': 'application/json'}
+POST_HEADERS = {'content-type': 'application/json', 'accept': 'application/json;version=2'}
 SSL_VERIFY = False
 
 # Helper functions for GET/POST API methods
@@ -46,7 +46,7 @@ def get_json(location, json_data = ""):
     logging.debug("Request: GET %s" % location)
     if json_data: logging.debug("Request data: " + json.dumps(json_data))
     result = requests.get(location,
-                            data = json_data,
+                            params = json_data,
                             auth = (USERNAME, PASSWORD),
                             verify = SSL_VERIFY)
     logging.debug("Request result: " + json.dumps(result.json()))
@@ -56,7 +56,7 @@ def post_json(location, json_data):
     logging.debug("Request: POST %s" % location)
     if json_data: logging.debug("Request data: " + json.dumps(json_data))
     result = requests.post(location,
-                            data = json_data,
+                            data = json.dumps(json_data),
                             auth = (USERNAME, PASSWORD),
                             verify = SSL_VERIFY,
                             headers = POST_HEADERS)
@@ -103,8 +103,8 @@ def main():
         URL = args["server_url"]
     elif config.has_option('config', 'url'):
         URL = config.get('config', 'url')
-    SATELLITE_API = URL + "api/v2/" 
-    KATELLO_API = URL + "katello/api/v2/"
+    SATELLITE_API = URL + "api/" 
+    KATELLO_API = URL + "katello/api/"
     TASKS_API = URL + "foreman_tasks/api/"
 
     if args["organization"]:
@@ -202,7 +202,8 @@ def main():
             # Get CV version in Library environment only
             for version in cv["versions"]:
                 if 1 in version["environment_ids"]:
-                    logging.info("Selected content-view %s (version %s) as baseline to include %s erratas." % (cv["name"], version["version"], len(errata_ids)))
+                    logging.info("Selected content-view %s (version %s) as baseline to include %s erratas. Skipping any other existing content-view version." % (cv["name"], version["version"], len(errata_ids)))
+                    break
                 else:
                     logging.debug("Skipping content-view %s (version %s): Not in Library." % (cv["name"], version["version"]))
 
@@ -221,7 +222,7 @@ def main():
             # If no dry-run execution publish an incremental version and propagate it to all composite content views
             if args["dry_run"] == False:
                 logging.info("Publishing incremental content-view version.")
-                incremental_update = post_json(KATELLO_API + "content_view_versions/incremental_update", json.dumps(post_params))
+                incremental_update = post_json(KATELLO_API + "content_view_versions/incremental_update", post_params)
 
                 # Loop until task is finished
                 progress = 0
@@ -263,7 +264,7 @@ def main():
                         }
 
                         # Invoke job execution and continue with another CV in the list (if any)
-                        job_execution = post_json(SATELLITE_API + 'job_invocations', json.dumps(post_params))
+                        job_execution = post_json(SATELLITE_API + 'job_invocations', post_params)
                     else:
                         logging.info("Remote execution job \"Install Errata - Katello SSH Default\" not found. Skipping errata installation.")
                 else:
